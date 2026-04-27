@@ -48,6 +48,11 @@ class Settings:
     # someone hammering the endpoint to spam Stripe with abandoned sessions.
     # Set to 0 to disable.
     checkout_rate_limit_per_minute: int = 10
+    # Freemium re-architecture feature flag. When False (default), the
+    # legacy local-cap + per-key daily quota path runs unchanged. When
+    # True, /v1/build uses the new 30-day rolling window quota +
+    # build cache. See MIGRATION_NOTES.md (Step 4 onwards).
+    metering_v2: bool = False
 
 
 def _env_bool(key: str, default: bool) -> bool:
@@ -98,4 +103,5 @@ def get_settings() -> Settings:
         checkout_rate_limit_per_minute=int(
             os.getenv("DARML_CHECKOUT_RATE_LIMIT", "10")
         ),
+        metering_v2=_env_bool("DARML_METERING_V2", False),
     )
