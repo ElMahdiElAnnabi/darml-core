@@ -1,5 +1,6 @@
 import asyncio
 import os
+import sys
 import time
 from pathlib import Path
 
@@ -11,6 +12,31 @@ from darml.container import get_container
 from darml.domain.enums import OutputKind, ReportMode
 from darml.domain.exceptions import DarmlError
 from darml.domain.models import BuildRequest
+
+
+def _print_quota_headers(headers) -> None:
+    """Surface X-Build-Quota-* headers from a hosted build response.
+
+    The server sets these on every /v1/build response (success and 429).
+    On a successful build we want to remind the user where they stand;
+    on a 429 the dedicated message takes over and these headers go to
+    the structured body anyway.
+    """
+    limit = headers.get("X-Build-Quota-Limit")
+    remaining = headers.get("X-Build-Quota-Remaining")
+    reset = headers.get("X-Build-Quota-Reset")
+    cache_hit = headers.get("X-Build-Cache-Hit")
+    if not (limit and remaining):
+        return
+    used = (int(limit) - int(remaining)) if limit and remaining else None
+    if cache_hit == "true":
+        click.echo(f"  cache hit (didn't count toward quota)")
+    if used is not None:
+        line = f"  hosted quota: {used}/{limit} used this 30-day window"
+        if reset:
+            # Trim the iso timestamp to a date for user-readable output.
+            line += f" (resets {reset[:10]})"
+        click.echo(line)
 
 
 @click.group()
@@ -169,14 +195,26 @@ def _build_local(
     calibration_data: Path | None,
     output: str, report: str,
 ) -> None:
-    from darml.free_tier import consume_free_build
+    s = get_settings()
+    if s.metering_v2:
+        # v2: local builds are unmetered. Run unconditionally.
+        usage = None
+    else:
+        from darml.free_tier import consume_free_build
 
-    # Free tier: 5 builds/UTC-day enforced via ~/.darml/counter.
-    # Pro is unlimited; consume_free_build no-ops in that case.
-    try:
-        usage = consume_free_build()
-    except DarmlError as e:
-        raise click.ClickException(str(e))
+        # Legacy: free tier 5/day cap, enforced via ~/.darml/counter.
+        # Deprecation: this path goes away in the next minor release.
+        # Set DARML_METERING_V2=1 to disable the cap now.
+        click.secho(
+            "warning: the local-build daily quota is deprecated and will be "
+            "removed in the next release. Set DARML_METERING_V2=1 to "
+            "disable it now (local builds become unmetered).",
+            fg="yellow", err=True,
+        )
+        try:
+            usage = consume_free_build()
+        except DarmlError as e:
+            raise click.ClickException(str(e))
 
     c = get_container()
     request = BuildRequest(
@@ -204,8 +242,8 @@ def _build_local(
         click.echo(f"Artifact: {result.artifact_zip_path}")
     if result.error:
         raise click.ClickException(result.error)
-    # Friendly nudge — only for free tier users.
-    if usage.message:
+    # Legacy free-tier nudge. Only fires when DARML_METERING_V2=False.
+    if usage is not None and usage.message:
         click.echo(usage.message)
 
 
@@ -222,6 +260,10 @@ def _build_remote(
     import httpx
 
     server = server.rstrip("/")
+    headers: dict[str, str] = {}
+    api_key = os.getenv("DARML_API_KEY")
+    if api_key:
+        headers["X-API-Key"] = api_key
     click.echo(f"→ POST {server}/v1/build  (target={target}, output={output})")
     try:
         opener_handles = [model_file.open("rb")]
@@ -241,12 +283,44 @@ def _build_remote(
                 "report_mode": report,
             }
             with httpx.Client(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
-                resp = client.post(f"{server}/v1/build", files=files, data=data)
+                resp = client.post(
+                    f"{server}/v1/build", files=files, data=data,
+                    headers=headers,
+                )
         finally:
             for h in opener_handles:
                 h.close()
+        # 429 quota_exhausted → friendly fallback message + exit 7 so CI
+        # can trap it specifically (vs. generic build-failed).
+        if resp.status_code == 429:
+            try:
+                body = resp.json().get("detail", {})
+            except Exception:
+                body = {}
+            reset_at = body.get("reset_at", "")
+            click.secho(
+                "✗ Hosted build quota exhausted.",
+                fg="red", err=True,
+            )
+            if reset_at:
+                click.secho(f"  Resets at: {reset_at}", err=True)
+            click.secho(
+                "  Local builds remain unlimited: drop --remote to build "
+                "in-process.",
+                err=True,
+            )
+            click.secho(
+                "  Or upgrade: https://darml.dev/#pricing",
+                err=True,
+            )
+            sys.exit(7)
         if resp.status_code >= 400:
-            raise click.ClickException(f"server returned {resp.status_code}: {resp.text}")
+            raise click.ClickException(
+                f"server returned {resp.status_code}: {resp.text}"
+            )
+        # Surface quota headers when present (server returns them on
+        # both success and 429).
+        _print_quota_headers(resp.headers)
         build_id = resp.json()["build_id"]
         click.echo(f"  build_id={build_id}")
 
@@ -363,6 +437,65 @@ def serve() -> None:
     s = get_settings()
     app = hooks.server_factory(get_container())
     uvicorn.run(app, host=s.host, port=s.port)
+
+
+@cli.command(name="quota")
+@click.option(
+    "--server", default=None,
+    help="HTTP base URL of a Darml server. Defaults to env DARML_SERVER. "
+         "Required because quota is a hosted-only concept; local builds "
+         "are always unmetered.",
+)
+def quota_cmd(server: str | None) -> None:
+    """Show your current hosted-build quota state.
+
+    Reads DARML_API_KEY for auth; reads DARML_SERVER (or --server) for
+    the API host. Local builds are always unmetered — there's no
+    concept of "local quota" any more.
+    """
+    server = server or os.getenv("DARML_SERVER")
+    if not server:
+        raise click.ClickException(
+            "Set DARML_SERVER (or pass --server) to the API URL "
+            "(typically https://api.darml.dev)."
+        )
+    api_key = os.getenv("DARML_API_KEY")
+    if not api_key:
+        raise click.ClickException(
+            "Set DARML_API_KEY — quota is per-key. Get yours from "
+            "the dashboard at https://api.darml.dev/."
+        )
+    import httpx  # noqa: PLC0415
+    server = server.rstrip("/")
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(
+                f"{server}/v1/portal/me",
+                headers={"X-API-Key": api_key},
+            )
+    except httpx.HTTPError as e:
+        raise click.ClickException(f"network error: {e}")
+    if r.status_code == 401:
+        raise click.ClickException(
+            "DARML_API_KEY rejected. Verify with `echo $DARML_API_KEY` "
+            "and re-issue from the dashboard if needed."
+        )
+    if r.status_code >= 400:
+        raise click.ClickException(f"server returned {r.status_code}: {r.text}")
+    body = r.json()
+    tier = body.get("tier", "?")
+    label = body.get("label", "")
+    used = body.get("usage_today")  # legacy field; v2 endpoint TBD
+    remaining = body.get("remaining_today")
+    click.echo(f"tier:      {tier}")
+    if label:
+        click.echo(f"label:     {label}")
+    if used is not None:
+        click.echo(f"used today:      {used}")
+    if remaining is not None and remaining != -1:
+        click.echo(f"remaining today: {remaining}")
+    elif remaining == -1:
+        click.echo("remaining today: unlimited")
 
 
 if __name__ == "__main__":
