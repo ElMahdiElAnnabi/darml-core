@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Welcome to Darml Pro — your key is on the way</title>
+<style>
+  :root {
+    --bg: #080c12; --panel: #10151d; --line: #1e2632;
+    --fg: #e6ecf3; --muted: #8d97a7; --muted-2: #a7b1bf;
+    --accent: #6366f1; --accent-2: #818cf8; --success: #00e676;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; min-height: 100vh; display: grid; place-items: center;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .card {
+    max-width: 560px; margin: 24px; padding: 40px 36px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; text-align: left;
+    box-shadow: 0 30px 80px -40px rgba(99, 102, 241, 0.25);
+  }
+  .check {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(0, 230, 118, 0.12);
+    display: grid; place-items: center; margin: 0 0 22px;
+    border: 1px solid rgba(0, 230, 118, 0.4);
+  }
+  .check svg { width: 28px; height: 28px; stroke: var(--success); }
+  h1 {
+    font-size: 26px; letter-spacing: -0.01em; margin: 0 0 14px;
+    background: linear-gradient(180deg, #fff 0%, #c7cfdb 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  p { margin: 0 0 14px; color: var(--muted-2); font-size: 15px; }
+  ol { margin: 18px 0; padding-left: 22px; color: var(--muted-2); font-size: 14.5px; }
+  ol li { padding: 4px 0; }
+  ol li code, p code {
+    background: var(--bg); padding: 1px 6px; border-radius: 3px;
+    font-family: var(--mono); font-size: 13px; color: var(--accent-2);
+  }
+  .session {
+    margin: 18px 0; padding: 10px 14px; background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px;
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+    word-break: break-all;
+  }
+  .actions { display: flex; gap: 12px; margin-top: 28px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 11px 20px; border-radius: 8px;
+    font-weight: 600; font-size: 14.5px; border: 1px solid transparent;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-2); text-decoration: none; }
+  .btn-ghost { color: var(--fg); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--muted-2); text-decoration: none; }
+  .small { font-size: 13px; color: var(--muted); margin-top: 22px; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <div class="check">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <h1>Welcome to Darml Pro.</h1>
+    <p>Payment confirmed. Your account is provisioning right now.</p>
+
+    <p>Within a couple of minutes you'll get an email containing:</p>
+    <ol>
+      <li><b>Pro Cloud:</b> your API key (starts with <code>sk_pro_…</code>) and a link to the dashboard at <a href="https://api.darml.dev/">api.darml.dev</a>.</li>
+      <li><b>Pro Self-Hosted:</b> your offline license key. <code>export DARML_LICENSE_KEY=…</code> and you're activated.</li>
+    </ol>
+
+    <p class="small">
+      Email not arriving? Check spam, then ping
+      <a href="mailto:hello@darml.dev?subject=Pro%20activation%20delay">hello@darml.dev</a>
+      with your purchase email — we'll resend by hand.
+    </p>
+
+    <div id="session" class="session" style="display:none"></div>
+
+    <div class="actions">
+      <a class="btn btn-primary" href="https://api.darml.dev/">Open the dashboard →</a>
+      <a class="btn btn-ghost" href="https://darml.dev/">Back to darml.dev</a>
+    </div>
+  </main>
+  <script>
+    // Reveal the Stripe session id (so support can match a "where's my key?"
+    // ticket back to the actual purchase). Read-only display, never sent
+    // anywhere — Stripe's redirect URL already has it.
+    const params = new URLSearchParams(window.location.search);
+    const sid = params.get('session_id');
+    if (sid) {
+      const el = document.getElementById('session');
+      el.style.display = 'block';
+      el.textContent = 'Reference: ' + sid;
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>Checkout canceled — Darml</title>
+<style>
+  :root {
+    --bg: #080c12; --panel: #10151d; --line: #1e2632;
+    --fg: #e6ecf3; --muted: #8d97a7; --muted-2: #a7b1bf;
+    --accent: #6366f1; --accent-2: #818cf8;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.55; min-height: 100vh; display: grid; place-items: center;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .card {
+    max-width: 520px; margin: 24px; padding: 40px 36px;
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px; text-align: left;
+  }
+  h1 {
+    font-size: 24px; letter-spacing: -0.01em; margin: 0 0 14px;
+    background: linear-gradient(180deg, #fff 0%, #c7cfdb 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  p { margin: 0 0 14px; color: var(--muted-2); font-size: 15px; }
+  .actions { display: flex; gap: 12px; margin-top: 24px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 11px 20px; border-radius: 8px;
+    font-weight: 600; font-size: 14.5px; border: 1px solid transparent;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-2); text-decoration: none; }
+  .btn-ghost { color: var(--fg); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--muted-2); text-decoration: none; }
+</style>
+</head>
+<body>
+  <main class="card">
+    <h1>Checkout canceled.</h1>
+    <p>No charge was made. Your card and details weren't touched.</p>
+    <p>Took a look but want to try again? You can pick a plan from the homepage,
+       or run the free Core tier (<code>pip install darml</code>) — five builds a day,
+       every target, no card required.</p>
+    <p>If anything wasn't clear about Pro, ping
+       <a href="mailto:hello@darml.dev">hello@darml.dev</a> — we'll answer in hours,
+       not days.</p>
+    <div class="actions">
+      <a class="btn btn-primary" href="https://darml.dev/#pricing">See plans</a>
+      <a class="btn btn-ghost" href="https://darml.dev/">Back to home</a>
+    </div>
+  </main>
+</body>
+</html>
