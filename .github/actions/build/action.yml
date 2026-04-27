@@ -1,0 +1,90 @@
+name: 'Darml — model to firmware'
+description: 'Compile an ML model to flashable firmware via the Darml hosted API.'
+branding:
+  icon: 'cpu'
+  color: 'purple'
+
+inputs:
+  model:
+    description: 'Path to the model file (.onnx / .tflite / .pkl) in the repo.'
+    required: true
+  target:
+    description: |
+      Target board ID. See https://api.darml.dev/v1/targets for the
+      full list. Examples: esp32-s3, stm32f4, rpi5, avr-mega328.
+    required: true
+  api-key:
+    description: |
+      Darml API key. Store as a repo secret (e.g. DARML_API_KEY) and
+      pass via `${{ secrets.DARML_API_KEY }}`. Get a key at
+      https://api.darml.dev/.
+    required: true
+  server:
+    description: 'Darml API base URL. Override for self-hosted Pro.'
+    required: false
+    default: 'https://api.darml.dev'
+  output:
+    description: 'firmware (default) | library | both'
+    required: false
+    default: 'firmware'
+  quantize:
+    description: 'true | false — INT8 post-training quantization'
+    required: false
+    default: 'false'
+  output-path:
+    description: 'Where to save the firmware artifact in the workspace.'
+    required: false
+    default: 'darml-build.zip'
+
+outputs:
+  artifact-path:
+    description: 'Path to the firmware artifact zip (relative to GITHUB_WORKSPACE).'
+    value: ${{ steps.build.outputs.artifact-path }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Cache the darml install across runs — dramatically speeds up CI.
+    - name: 'Set up Python'
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: 'pip'
+
+    - name: 'Install darml'
+      shell: bash
+      run: |
+        python -m pip install --upgrade pip
+        pip install darml
+
+    - name: 'darml login'
+      shell: bash
+      env:
+        DARML_API_KEY: ${{ inputs.api-key }}
+        DARML_SERVER:  ${{ inputs.server }}
+      run: |
+        # Verify auth works against the configured server before building.
+        # We use env-var auth rather than the file-based credentials path
+        # so the key never lands on disk in CI.
+        echo "→ verifying credentials against $DARML_SERVER"
+        darml quota --server "$DARML_SERVER"
+
+    - name: 'darml build'
+      id: build
+      shell: bash
+      env:
+        DARML_API_KEY: ${{ inputs.api-key }}
+        DARML_SERVER:  ${{ inputs.server }}
+      run: |
+        set -e
+        echo "→ building ${{ inputs.model }} for ${{ inputs.target }}"
+        darml build \
+          --remote \
+          --server "$DARML_SERVER" \
+          --target "${{ inputs.target }}" \
+          --output "${{ inputs.output }}" \
+          $([ "${{ inputs.quantize }}" = "true" ] && echo "--quantize") \
+          --out "${{ inputs.output-path }}" \
+          "${{ inputs.model }}"
+        # Surface the artifact path to downstream steps.
+        echo "artifact-path=${{ inputs.output-path }}" >> "$GITHUB_OUTPUT"

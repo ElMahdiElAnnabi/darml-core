@@ -1,20 +1,29 @@
-# Example: build firmware for every supported MCU on every push.
+# EXAMPLE WORKFLOW — copy this into YOUR repo, not run from here.
 #
-# To use this in your repo:
-#   1. Get a Darml API key at https://api.darml.dev/
-#   2. Add it as a repo secret named DARML_API_KEY
-#   3. Drop a copy of this file into .github/workflows/
-#   4. Edit the matrix to your target list
+# This file lives in darml-core to document the canonical usage of the
+# Darml GitHub Action. We deliberately gate it to manual `workflow_dispatch`
+# only — running it on `push` to darml-core's own main would fail (the
+# repo doesn't contain a model.onnx; the action expects one in your repo).
 #
-# Each matrix leg runs in parallel on a hosted runner. A 5-target
-# matrix takes ~30s wall-clock total because the cache hits on
-# unchanged inputs.
+# To use this in your own repo:
+#   1. Copy this file to .github/workflows/build.yml in YOUR repo.
+#   2. Change the `on:` block to your trigger of choice — typical:
+#        on:
+#          push:
+#            branches: [main]
+#   3. Add your model file (model.onnx / .tflite / .pkl) to your repo.
+#   4. Get a Darml API key at https://api.darml.dev/ and add it as a
+#      repo secret named DARML_API_KEY.
+#   5. Adjust the matrix `target` list to the boards you actually ship.
+#
+# The action itself lives at .github/actions/build/ in this repo —
+# that's where the action.yml + the documentation README sit.
 
-name: Build firmware (example)
+name: Build firmware (example — manual only)
 
 on:
-  push:
-    branches: [main]
+  # Manual-only in darml-core. Replace with `push:` when you copy this
+  # to your own repo.
   workflow_dispatch:
 
 permissions:
@@ -24,8 +33,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
     strategy:
-      # Keep going on individual target failures so you see the full
-      # picture, not just the first to break.
       fail-fast: false
       matrix:
         target:

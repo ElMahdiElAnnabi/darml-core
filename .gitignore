@@ -13,11 +13,12 @@ venv/
 env/
 .tox/
 
-# Packaging / build
-dist/
-build/
-sdist/
-wheels/
+# Packaging / build (anchored to repo root so we don't accidentally ignore
+# unrelated `build/` directories — e.g. .github/actions/build/).
+/dist/
+/build/
+/sdist/
+/wheels/
 *.whl
 
 # Test / coverage / type-check caches
