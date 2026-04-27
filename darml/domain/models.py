@@ -7,6 +7,22 @@ from .enums import BuildStatus, DType, ModelFormat, OutputKind, ReportMode, Runt
 
 
 @dataclass(frozen=True)
+class LayerInfo:
+    """Per-layer profile data, populated by parsers when they can extract
+    it. The build report renders one table row per layer when this is
+    populated. When empty, the report falls back to a model-level
+    summary (built from ops_list)."""
+    name: str                           # parser-provided or "op_<idx>"
+    op_type: str                        # e.g. CONV_2D, FULLY_CONNECTED, MatMul
+    input_shape: tuple[int, ...] = ()
+    output_shape: tuple[int, ...] = ()
+    weight_bytes: int = 0               # parameter bytes for this layer
+    activation_bytes: int = 0           # peak intermediate tensor bytes
+    quantization: str = ""              # "fp32", "int8", "int8_per_channel", …
+    macs: int = 0                       # multiply-accumulate ops; 0 = unknown
+
+
+@dataclass(frozen=True)
 class ModelInfo:
     format: ModelFormat
     file_size_bytes: int
@@ -17,6 +33,9 @@ class ModelInfo:
     num_ops: int
     is_quantized: bool
     ops_list: tuple[str, ...]
+    # Optional richer profile. Default empty for backward compatibility
+    # — parsers that don't populate it produce summary-only reports.
+    layers: tuple[LayerInfo, ...] = ()
 
     @property
     def input_elements(self) -> int:

@@ -43,3 +43,30 @@ uses [Semantic Versioning](https://semver.org/).
 - API keys are stored hashed at rest (`sha256(plaintext)` + 12-char
   prefix). The plaintext is shown ONCE at creation; the DB never
   holds it.
+
+## [Unreleased] — Pro feature roadmap (P0 + P1.1)
+
+### Added
+- `darml login` command — saves API key to `~/.darml/credentials`
+  (chmod 0600) or OS keychain when `DARML_USE_KEYCHAIN=1`. Verifies
+  against the server before saving.
+- `darml build --remote` now reads credentials from the saved file
+  in addition to env vars (precedence: env > file).
+- HTML build report (`build_report.py` + report panel in the artifact
+  bundle). Shows per-layer profile when the parser populates it,
+  falls back to op-type histogram. Self-contained; opens offline;
+  print-friendly. <200 KB.
+- `LayerInfo` domain type — optional richer per-layer metadata that
+  parsers may populate.
+- GitHub Action at `.github/actions/build/` — `darml/build@main` for
+  CI workflows. Caches the install across runs; matrix-friendly.
+- Example workflow at `.github/workflows/example-build.yml` —
+  parallel build across 4 MCU targets on every push.
+
+### Scaffolded (NOT launch-ready — see docs)
+- `MixedPrecisionQuantizer` — port + Pro adapter. Implements QAT
+  fake-quant detection (real). The Pareto-search core is stubbed
+  pending real ML iteration — see `docs/MIXED_PRECISION_ROADMAP.md`.
+  Calling `.quantize()` raises `NotImplementedError` unless the
+  caller passes `_allow_scaffold=True` (acknowledges the kill-criterion
+  benchmark hasn't been run).

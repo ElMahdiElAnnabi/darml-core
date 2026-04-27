@@ -173,13 +173,16 @@ def build(
             fg="yellow", err=True,
         )
 
-    server = server or os.getenv("DARML_SERVER")
+    # Credentials precedence: --server flag → env → ~/.darml/credentials.
+    file_server, _file_key = _load_credentials()
+    server = server or os.getenv("DARML_SERVER") or file_server
     use_remote = (local_mode is False) or (local_mode is None and server is not None)
 
     if use_remote:
         if not server:
             raise click.ClickException(
-                "--remote requires --server URL or DARML_SERVER env var."
+                "--remote requires a server URL. Run `darml login` to save one, "
+                "or pass --server / set DARML_SERVER."
             )
         _build_remote(
             model_file, target, quantize, calibration_data,
@@ -261,7 +264,9 @@ def _build_remote(
 
     server = server.rstrip("/")
     headers: dict[str, str] = {}
-    api_key = os.getenv("DARML_API_KEY")
+    # API key precedence: env > saved credentials.
+    _, file_key = _load_credentials()
+    api_key = os.getenv("DARML_API_KEY") or file_key
     if api_key:
         headers["X-API-Key"] = api_key
     click.echo(f"→ POST {server}/v1/build  (target={target}, output={output})")
@@ -437,6 +442,135 @@ def serve() -> None:
     s = get_settings()
     app = hooks.server_factory(get_container())
     uvicorn.run(app, host=s.host, port=s.port)
+
+
+@cli.command(name="login")
+@click.option(
+    "--server", default=None,
+    help="Darml API base URL. Defaults to https://api.darml.dev. "
+         "Override for self-host or staging.",
+)
+@click.option(
+    "--api-key", default=None,
+    help="Paste an API key from your dashboard. If omitted and stdin is "
+         "a TTY, you'll be prompted.",
+)
+def login_cmd(server: str | None, api_key: str | None) -> None:
+    """Save Darml credentials to ~/.darml/credentials.
+
+    Stores the API key on disk (chmod 0600). For deployments that have
+    the OS keychain available, set DARML_USE_KEYCHAIN=1 — we'll use it
+    via the `keyring` library if installed.
+
+    The next `darml build --remote` (or any other hosted call) will pick
+    up the saved credentials automatically.
+    """
+    server = (server or os.getenv("DARML_SERVER")
+              or "https://api.darml.dev").rstrip("/")
+    if not api_key:
+        if not sys.stdin.isatty():
+            raise click.ClickException(
+                "stdin is not a TTY; pass --api-key explicitly."
+            )
+        api_key = click.prompt("Darml API key", hide_input=True).strip()
+    if not api_key:
+        raise click.ClickException("API key cannot be empty.")
+
+    # Verify the key against the server before saving — friendly fail.
+    import httpx  # noqa: PLC0415
+    try:
+        with httpx.Client(timeout=10.0) as client:
+            r = client.get(
+                f"{server}/v1/portal/me",
+                headers={"X-API-Key": api_key},
+            )
+    except httpx.HTTPError as e:
+        raise click.ClickException(f"network error verifying key: {e}")
+    if r.status_code == 401:
+        raise click.ClickException(
+            "Server rejected this key. Check it on the dashboard at "
+            f"{server}/."
+        )
+    if r.status_code >= 400:
+        raise click.ClickException(
+            f"Server returned {r.status_code}: {r.text}"
+        )
+    info = r.json()
+    tier = info.get("tier", "unknown")
+
+    creds_dir = Path.home() / ".darml"
+    creds_path = creds_dir / "credentials"
+    creds_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(creds_dir, 0o700)
+    except OSError:
+        pass
+
+    # Optional OS keychain. We don't make it the default because keyring
+    # has surprising failure modes on headless Linux (D-Bus required).
+    use_keychain = os.getenv("DARML_USE_KEYCHAIN") == "1"
+    if use_keychain:
+        try:
+            import keyring  # noqa: PLC0415
+            keyring.set_password("darml", server, api_key)
+            # Still write a stub so the loader knows where to look.
+            stub = f"server={server}\nstorage=keychain\n"
+            creds_path.write_text(stub)
+            try:
+                os.chmod(creds_path, 0o600)
+            except OSError:
+                pass
+            click.secho(f"✓ stored in OS keychain (tier={tier})", fg="green")
+            return
+        except Exception as e:
+            click.secho(
+                f"warning: keychain failed ({e}); falling back to plain "
+                f"file at {creds_path}",
+                fg="yellow", err=True,
+            )
+
+    creds_path.write_text(f"server={server}\napi_key={api_key}\n")
+    try:
+        os.chmod(creds_path, 0o600)
+    except OSError:
+        click.secho(
+            f"warning: couldn't chmod 0600 on {creds_path}",
+            fg="yellow", err=True,
+        )
+    click.secho(f"✓ saved to {creds_path} (tier={tier})", fg="green")
+
+
+def _load_credentials() -> tuple[str | None, str | None]:
+    """Read ~/.darml/credentials. Returns (server, api_key). Either may be
+    None if not configured. Env vars (DARML_SERVER, DARML_API_KEY)
+    override the file."""
+    creds_path = Path.home() / ".darml" / "credentials"
+    server: str | None = None
+    api_key: str | None = None
+    storage: str | None = None
+    if creds_path.exists():
+        for line in creds_path.read_text().splitlines():
+            if "=" not in line:
+                continue
+            k, _, v = line.partition("=")
+            k, v = k.strip(), v.strip()
+            if k == "server":
+                server = v
+            elif k == "api_key":
+                api_key = v
+            elif k == "storage":
+                storage = v
+    if storage == "keychain" and api_key is None:
+        try:
+            import keyring  # noqa: PLC0415
+            api_key = keyring.get_password("darml", server or "")
+        except Exception:
+            pass
+    # Env overrides file.
+    return (
+        os.getenv("DARML_SERVER") or server,
+        os.getenv("DARML_API_KEY") or api_key,
+    )
 
 
 @cli.command(name="quota")

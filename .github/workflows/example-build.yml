@@ -1,0 +1,54 @@
+# Example: build firmware for every supported MCU on every push.
+#
+# To use this in your repo:
+#   1. Get a Darml API key at https://api.darml.dev/
+#   2. Add it as a repo secret named DARML_API_KEY
+#   3. Drop a copy of this file into .github/workflows/
+#   4. Edit the matrix to your target list
+#
+# Each matrix leg runs in parallel on a hosted runner. A 5-target
+# matrix takes ~30s wall-clock total because the cache hits on
+# unchanged inputs.
+
+name: Build firmware (example)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      # Keep going on individual target failures so you see the full
+      # picture, not just the first to break.
+      fail-fast: false
+      matrix:
+        target:
+          - esp32-s3
+          - stm32f4
+          - rpi5
+          - avr-mega328
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build for ${{ matrix.target }}
+        id: darml
+        uses: ElMahdiElAnnabi/darml-core/.github/actions/build@main
+        with:
+          model: model.onnx
+          target: ${{ matrix.target }}
+          api-key: ${{ secrets.DARML_API_KEY }}
+          quantize: 'true'
+          output-path: 'firmware-${{ matrix.target }}.zip'
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.target }}
+          path: ${{ steps.darml.outputs.artifact-path }}
+          retention-days: 7
