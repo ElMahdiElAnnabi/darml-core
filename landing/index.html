@@ -1028,6 +1028,13 @@
       </details>
 
       <details>
+        <summary>Why these specific STM32 / AVR boards and not others?</summary>
+        <p>
+          We picked one board per performance tier — Cortex-M4 (<code>stm32f4</code>), Cortex-M7 (<code>stm32h7</code>), M55 + NPU (<code>stm32n6</code>); Arduino Uno-class (<code>avr-mega328</code>) and Mega-class (<code>avr-mega2560</code>) — rather than enumerate every variant. The full STM32 family has hundreds of chips (F0 / F1 / F3 / G0 / G4 / L0 / L4 / L5 / U5 / WL / WB / MP1 / N6 …) that differ in core, FPU presence, peripherals, and memory layout, so each one needs a verified runtime template and CI build, not just a board-ID change. We add on demand: <a href="https://github.com/ElMahdiElAnnabi/darml-core/issues/new">open an issue</a> with chip + dev-board name and we'll prioritize.
+        </p>
+      </details>
+
+      <details>
         <summary>Is the firmware I get auditable? Can I read what gets flashed?</summary>
         <p>
           Yes. The output is a standard PlatformIO project (for MCU targets) or a Dockerfile + Python script (for Linux targets). No precompiled blobs, no obfuscation. The C/C++ glue is generated from templates you can read in the source tree (<code>darml/infrastructure/templates/</code>). Inspect, diff, fork as you want.
