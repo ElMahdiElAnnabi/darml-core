@@ -1,3 +1,4 @@
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -6,6 +7,78 @@ from darml.domain.models import BuildRequest, ModelInfo
 from darml.infrastructure.platformio.platformio_runner import PlatformIORunner
 
 from .base_builder import BaseBuilder
+
+
+# ── Template-injection guards ──────────────────────────────────────────────
+#
+# These three values land inside C string literals in the firmware
+# templates (see infrastructure/templates/{esp32,stm32,avr}/lib/darml/).
+# A naive `text.replace("{{KEY}}", val)` substitution treats the value
+# as opaque text — but if a value contains `}}; system("…"); /*` the
+# attacker is one bad template tweak away from arbitrary C compiled
+# into the firmware.
+#
+# "Printable ASCII" alone isn't enough — `"` closes the string literal
+# and `\` starts an escape sequence. Both can break out without any
+# control byte. So the rule is: printable ASCII MINUS the four chars
+# that can subvert a C string: " \ NUL CR LF.
+#
+# Real Wi-Fi APs don't accept those bytes in SSIDs/passwords either,
+# so this matches what the radio stack would do anyway.
+
+# Printable ASCII (0x20-0x7e) excluding " (0x22) and \ (0x5c). NUL/CR/LF
+# are already outside 0x20-0x7e so the range exclusion handles them.
+_SSID_RE = re.compile(r'^[\x20-\x21\x23-\x5b\x5d-\x7e]{1,32}$')
+_WPA_RE  = re.compile(r'^[\x20-\x21\x23-\x5b\x5d-\x7e]{8,63}$')
+
+
+def _safe_template_ssid(ssid: str | None) -> str:
+    if not ssid:
+        return ""
+    if not _SSID_RE.fullmatch(ssid):
+        raise ValueError(
+            "Invalid wifi_ssid: 1-32 printable ASCII characters, excluding "
+            "double-quote and backslash."
+        )
+    return ssid
+
+
+def _safe_template_wpa_pass(pwd: str | None) -> str:
+    if not pwd:
+        return ""
+    if not _WPA_RE.fullmatch(pwd):
+        raise ValueError(
+            "Invalid wifi_password: 8-63 printable ASCII characters, "
+            "excluding double-quote and backslash."
+        )
+    return pwd
+
+
+def _safe_template_url(url: str | None) -> str:
+    """Re-serialize through urlparse, then reject any byte that could
+    break out of a C string literal. Defense in depth: SSRF + scheme
+    checks already happened at the API edge in routes/build.py; this is
+    the last gate before the URL becomes literal C source."""
+    if not url:
+        return ""
+    # Check the RAW input first — newer Python urlparse silently strips
+    # some control chars (CVE-2023-24329 mitigation), so by the time we
+    # round-trip through urlparse+urlunparse the dangerous bytes might
+    # be gone from the rebuilt string. If we only checked the rebuilt
+    # form, e.g. a CR-injected URL would pass.
+    forbidden_chars = {'"', "\\", "\n", "\r", "\0"}
+    if any(c in forbidden_chars or ord(c) < 0x20 for c in url):
+        raise ValueError(
+            "Invalid report_url: contains a control or string-breakout "
+            'character (one of: NUL, CR, LF, " or \\).'
+        )
+    from urllib.parse import urlparse, urlunparse
+    parsed = urlparse(url)
+    if parsed.scheme not in ("https", "http"):
+        # http allowed for local dev; full SSRF check happens at the API
+        # boundary (see darml_pro/api/routes/build.py:_validate_report_url).
+        raise ValueError(f"Invalid report_url scheme: {parsed.scheme!r}")
+    return urlunparse(parsed)
 
 
 @dataclass
@@ -117,9 +190,9 @@ class PlatformIOBuilder(BaseBuilder):
             "TENSOR_ARENA_SIZE": str(capped),
             "INFERENCE_INTERVAL_MS": str(request.inference_interval_ms),
             "REPORT_MODE": request.report_mode.value,
-            "REPORT_URL": request.report_url or "",
-            "WIFI_SSID": request.wifi_ssid or "",
-            "WIFI_PASS": request.wifi_password or "",
+            "REPORT_URL": _safe_template_url(request.report_url),
+            "WIFI_SSID": _safe_template_ssid(request.wifi_ssid),
+            "WIFI_PASS": _safe_template_wpa_pass(request.wifi_password),
         }, warnings
 
     async def _compile(self, project_dir: Path) -> tuple[dict[str, Path], str]:

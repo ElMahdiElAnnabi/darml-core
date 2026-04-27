@@ -1,0 +1,28 @@
+# Belt-and-suspenders: keep proprietary, deploy, and test trees out of
+# any artifact (sdist OR wheel) for the public `darml` package.
+#
+# `prune` is a sdist directive that propagates to wheel builds via
+# PEP-517. pyproject.toml's find_packages exclude is the primary line
+# of defense; this file backstops it for resource files / data dirs
+# that find_packages doesn't enumerate.
+
+prune darml-pro
+prune darml-pro.*
+prune deploy
+prune landing
+prune scripts
+prune tests
+prune examples
+prune dist
+prune build
+prune .venv
+
+global-exclude __pycache__
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude .DS_Store
+global-exclude *.egg-info
+
+include README.md
+include LICENSE
+include pyproject.toml

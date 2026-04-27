@@ -1,6 +1,6 @@
 [project]
 name = "darml"
-version = "0.1.1"
+version = "0.1.2"
 description = "Model-to-firmware compiler for edge AI"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -59,9 +59,33 @@ darml = "darml.interfaces.cli.main:cli"
 requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
+# Strict package discovery — Core must NOT pick up the proprietary
+# `darml-pro/` sibling directory.
+#
+# History: 0.1.0 and 0.1.1 wheels accidentally bundled the entire
+# darml-pro/ tree because find_packages walked the hyphen-dir as a
+# namespace and the include="darml*" pattern matched the inner
+# darml_pro/ package. Fix:
+#   - `namespaces = false`  → skip dirs without __init__.py
+#                              (darml-pro/ has none; darml/ does)
+#   - `where = ["."]`       → explicit root, no implicit src/ shenanigans
+#   - exclude all variants  → defense in depth
+# A CI test (tests/security/test_wheel_purity.py) asserts no darml_pro
+# content reaches dist/.
 [tool.setuptools.packages.find]
-include = ["darml*"]
-exclude = ["darml_pro*", "tests*"]
+where      = ["."]
+include    = ["darml", "darml.*"]
+exclude    = [
+    "darml_pro",        "darml_pro.*",
+    "darml-pro",        "darml-pro.*",
+    "tests",            "tests.*",
+    "examples",         "examples.*",
+    "scripts",          "scripts.*",
+    "deploy",           "deploy.*",
+    "landing",          "landing.*",
+    "darml_pro_tests*",
+]
+namespaces = false
 
 [tool.setuptools.package-data]
 "darml.infrastructure.templates" = ["**/*"]

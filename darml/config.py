@@ -14,7 +14,10 @@ class Settings:
     use_sqlite: bool = False
     sqlite_path: str = "./data/darml.db"
     debug: bool = False
-    cors_origins: tuple[str, ...] = ("*",)
+    # Default empty — operators must explicitly set DARML_CORS_ORIGINS to
+    # allow cross-origin browser callers. Avoids accidentally shipping a
+    # public-API server that any malicious page can fetch from.
+    cors_origins: tuple[str, ...] = ()
     cache_enabled: bool = True
     cache_dir: str = "./data/cache"
     auth_enabled: bool = False
@@ -26,6 +29,25 @@ class Settings:
     stripe_price_pro_cloud: str = ""
     stripe_price_pro_selfhost: str = ""
     public_base_url: str = "http://localhost:8080"
+    # API-key persistence (Pro). Empty path → fall back to env-only store.
+    api_keys_db_path: str = "./data/api_keys.db"
+    # Admin API bearer token. When unset, admin endpoints are disabled (503).
+    admin_token: str = ""
+    # Transactional email (Resend).
+    resend_api_key: str = ""
+    resend_from: str = "no-reply@darml.dev"
+    # Public URL for the API server (used in email templates so users have
+    # a clickable dashboard link). Distinct from public_base_url which
+    # points at the marketing site (darml.dev).
+    api_base_url: str = "https://api.darml.dev"
+    # Strict-mode startup validation. When true, missing production secrets
+    # (Resend, Stripe, license signing) raise on boot — refuses to start
+    # silently mis-configured. When false (default), only warnings are logged.
+    strict_config: bool = False
+    # Per-IP requests-per-minute cap on /v1/billing/checkout/{plan}. Prevents
+    # someone hammering the endpoint to spam Stripe with abandoned sessions.
+    # Set to 0 to disable.
+    checkout_rate_limit_per_minute: int = 10
 
 
 def _env_bool(key: str, default: bool) -> bool:
@@ -55,7 +77,7 @@ def get_settings() -> Settings:
         use_sqlite=_env_bool("DARML_USE_SQLITE", False),
         sqlite_path=os.getenv("DARML_SQLITE_PATH", "./data/darml.db"),
         debug=_env_bool("DARML_DEBUG", False),
-        cors_origins=_env_csv("DARML_CORS_ORIGINS", ("*",)),
+        cors_origins=_env_csv("DARML_CORS_ORIGINS", ()),
         cache_enabled=_env_bool("DARML_CACHE_ENABLED", True),
         cache_dir=os.getenv("DARML_CACHE_DIR", "./data/cache"),
         auth_enabled=_env_bool("DARML_AUTH_ENABLED", False),
@@ -67,4 +89,13 @@ def get_settings() -> Settings:
         stripe_price_pro_cloud=os.getenv("STRIPE_PRICE_PRO_CLOUD", ""),
         stripe_price_pro_selfhost=os.getenv("STRIPE_PRICE_PRO_SELFHOST", ""),
         public_base_url=os.getenv("DARML_PUBLIC_BASE_URL", "http://localhost:8080"),
+        api_keys_db_path=os.getenv("DARML_API_KEYS_DB", "./data/api_keys.db"),
+        admin_token=os.getenv("DARML_ADMIN_TOKEN", ""),
+        resend_api_key=os.getenv("RESEND_API_KEY", ""),
+        resend_from=os.getenv("DARML_FROM_EMAIL", "no-reply@darml.dev"),
+        api_base_url=os.getenv("DARML_API_BASE_URL", "https://api.darml.dev"),
+        strict_config=_env_bool("DARML_STRICT_CONFIG", False),
+        checkout_rate_limit_per_minute=int(
+            os.getenv("DARML_CHECKOUT_RATE_LIMIT", "10")
+        ),
     )

@@ -93,7 +93,18 @@ class BuildRequest:
     output_kind: OutputKind = OutputKind.FIRMWARE
     report_mode: ReportMode = ReportMode.SERIAL
     report_url: str | None = None
+    # 1 ms .. 1 hour. The lower bound stops a misconfigured device from
+    # spinning a 0-ms loop that hangs the watchdog; the upper bound is
+    # purely sanity (an hour-long sleep on an MCU likely indicates a unit
+    # error, e.g. someone passed seconds expecting ms).
     inference_interval_ms: int = 1000
+
+    def __post_init__(self):
+        if not (1 <= self.inference_interval_ms <= 3_600_000):
+            raise ValueError(
+                f"inference_interval_ms must be in [1, 3_600_000] ms; "
+                f"got {self.inference_interval_ms}."
+            )
     wifi_ssid: str | None = None
     wifi_password: str | None = None
 
