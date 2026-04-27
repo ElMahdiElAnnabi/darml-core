@@ -1,0 +1,75 @@
+[project]
+name = "darml"
+version = "0.1.1"
+description = "Model-to-firmware compiler for edge AI"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [
+    { name = "Darml Contributors" },
+]
+keywords = ["edge-ai", "tinyml", "firmware", "tflite", "onnx", "esp32", "stm32"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Hardware :: Hardware Drivers",
+    "Operating System :: OS Independent",
+]
+# Core has minimal deps. Optional groups pull in heavier model-format
+# parsers; the FastAPI server, quantizers, and ONNX→TFLite chain live in
+# the separate `darml-pro` package.
+dependencies = [
+    "click>=8.1.0",
+    "httpx>=0.27.0",
+]
+
+[project.optional-dependencies]
+tflite  = ["tflite-runtime>=2.14.0", "numpy>=1.26.0"]
+onnx    = ["onnx>=1.16.0"]
+sklearn = ["joblib>=1.4.0", "scikit-learn>=1.4.0", "emlearn>=0.20.0", "setuptools>=68.0"]
+build   = ["platformio>=6.1.0"]
+all = [
+    "tflite-runtime>=2.14.0",
+    "numpy>=1.26.0",
+    "onnx>=1.16.0",
+    "joblib>=1.4.0",
+    "scikit-learn>=1.4.0",
+    "emlearn>=0.20.0",
+    "setuptools>=68.0",
+    "platformio>=6.1.0",
+]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.6.0",
+]
+
+[project.scripts]
+darml = "darml.interfaces.cli.main:cli"
+
+# [project.urls]
+# Add Homepage / Repository / Issues / Documentation entries here once the
+# linked pages actually exist. Empty links cause dead "Homepage" buttons on
+# the PyPI project page, which signal an abandoned project.
+
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["darml*"]
+exclude = ["darml_pro*", "tests*"]
+
+[tool.setuptools.package-data]
+"darml.infrastructure.templates" = ["**/*"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"

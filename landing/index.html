@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Darml — Model in. Firmware out.</title>
+<meta name="description" content="Darml is an open-source model-to-firmware compiler for edge AI devices. Upload TFLite, ONNX, or scikit-learn — get a flashable .bin for AVR, STM32, ESP32, Raspberry Pi, or Jetson. Free MIT core, paid Pro." />
+<style>
+  :root {
+    --bg: #080c12;
+    --panel: #10151d;
+    --line: #1e2632;
+    --fg: #e6ecf3;
+    --muted: #6b7684;
+    --muted-2: #8a96a4;
+    --accent: #6366f1;
+    --accent-2: #818cf8;
+    --success: #00e676;
+    --warn: #ffab00;
+    --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    line-height: 1.5;
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: var(--accent-2); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  /* Top bar */
+  header.top {
+    border-bottom: 1px solid var(--line);
+    padding: 14px 0;
+    position: sticky; top: 0; background: rgba(8, 12, 18, 0.85);
+    backdrop-filter: saturate(150%) blur(10px);
+    z-index: 10;
+  }
+  header.top .container { display: flex; align-items: baseline; gap: 18px; }
+  header.top .brand {
+    font-weight: 600; letter-spacing: 0.5px; display: flex; align-items: center; gap: 10px;
+  }
+  header.top .brand .dot {
+    width: 9px; height: 9px; border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+  header.top nav { margin-left: auto; display: flex; gap: 22px; font-size: 14px; color: var(--muted-2); }
+
+  /* Hero */
+  .hero { padding: 96px 0 80px; border-bottom: 1px solid var(--line); }
+  .hero h1 {
+    font-size: 56px; line-height: 1.05; letter-spacing: -0.02em; margin: 0 0 20px;
+    background: linear-gradient(180deg, #fff 0%, #c7cfdb 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .hero .tagline { font-size: 21px; color: var(--muted-2); max-width: 640px; margin: 0 0 32px; }
+  .hero .cmd {
+    font-family: var(--mono); font-size: 14.5px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 18px 20px; max-width: 720px; line-height: 1.9;
+    box-shadow: 0 30px 60px -30px rgba(99, 102, 241, 0.18);
+  }
+  .hero .cmd .prompt   { color: var(--accent); user-select: none; margin-right: 8px; }
+  .hero .cmd .out      { color: var(--success); }
+  .hero .cmd .out::before { content: "▌  "; color: var(--success); }
+  .hero .cmd .comment  { color: var(--muted); }
+  .hero .cta { display: flex; gap: 14px; margin-top: 28px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; padding: 12px 22px;
+    border-radius: 8px; font-weight: 600; font-size: 15px;
+    border: 1px solid transparent; cursor: pointer; text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent-2); text-decoration: none; }
+  .btn-ghost { color: var(--fg); border-color: var(--line); }
+  .btn-ghost:hover { border-color: var(--muted-2); text-decoration: none; }
+
+  /* Section spacing */
+  section { padding: 80px 0; border-bottom: 1px solid var(--line); }
+  section h2 { font-size: 30px; letter-spacing: -0.01em; margin: 0 0 12px; }
+  section .lead { color: var(--muted-2); margin: 0 0 40px; max-width: 680px; }
+
+  /* Audience strip */
+  .audience { background: var(--panel); border-bottom: 1px solid var(--line); }
+  .audience .container { padding: 28px 24px; }
+  .audience .row { display: grid; gap: 18px; grid-template-columns: 1fr 1fr; }
+  .audience h4 {
+    font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase;
+    color: var(--accent-2); margin: 0 0 6px;
+  }
+  .audience p { margin: 0; color: var(--muted-2); font-size: 14.5px; line-height: 1.55; }
+
+  /* Verified builds — table-like grid */
+  .verified-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 0.6fr 0.6fr 0.7fr;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    overflow: hidden;
+  }
+  .verified-grid > div {
+    padding: 14px 16px; border-bottom: 1px solid var(--line); font-size: 14px;
+  }
+  .verified-grid > div:nth-last-child(-n+5) { border-bottom: none; }
+  .verified-grid .head {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px;
+    color: var(--accent-2); background: rgba(99,102,241,0.05);
+  }
+  .verified-grid .mono { font-family: var(--mono); color: var(--muted-2); }
+  .verified-grid .ok   { color: var(--success); font-family: var(--mono); }
+  .footnote { margin-top: 14px; color: var(--muted); font-size: 13px; }
+
+  /* Hardware tiers */
+  .tiers { display: grid; gap: 16px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .tier {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 22px;
+  }
+  .tier h3 { margin: 0 0 6px; font-size: 18px; }
+  .tier .tier-spec { color: var(--muted); font-size: 13px; font-family: var(--mono); }
+  .tier .tier-targets { color: var(--muted-2); font-size: 13px; margin-top: 12px; line-height: 1.7; }
+  .tier .badge {
+    display: inline-block; font-size: 11px; padding: 2px 8px;
+    border-radius: 999px; background: rgba(99,102,241,0.12); color: var(--accent-2);
+    margin-bottom: 10px; letter-spacing: 0.4px; text-transform: uppercase;
+  }
+  .hardware-cta {
+    margin-top: 24px; padding: 16px 18px;
+    background: var(--panel); border: 1px dashed var(--line); border-radius: 8px;
+    color: var(--muted-2); font-size: 14px;
+  }
+
+  /* Workflow (re-written from user perspective) */
+  .workflow { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+  .step {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 20px; position: relative;
+  }
+  .step .num {
+    font-family: var(--mono); font-size: 12px; color: var(--accent);
+    letter-spacing: 1px; margin-bottom: 8px; display: block;
+  }
+  .step h3 { margin: 0 0 6px; font-size: 16px; }
+  .step p { margin: 0; color: var(--muted-2); font-size: 14px; line-height: 1.55; }
+
+  /* Pricing — 4 tiers, tighter on mobile */
+  .plans { display: grid; gap: 18px; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); }
+  .plan {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 12px;
+    padding: 26px;
+  }
+  .plan.feature { border-color: var(--accent); position: relative; }
+  .plan.feature::before {
+    content: "Best for industry"; position: absolute; top: -10px; left: 22px;
+    background: var(--accent); color: #fff; font-size: 11px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px; letter-spacing: 0.5px;
+  }
+  .plan h3 { margin: 0 0 4px; font-size: 20px; }
+  .plan .price { font-size: 30px; font-weight: 700; margin: 12px 0 4px; }
+  .plan .price small { color: var(--muted); font-size: 13px; font-weight: 400; }
+  .plan .blurb { color: var(--muted-2); margin: 0 0 18px; min-height: 56px; font-size: 14px; }
+  .plan ul { margin: 0; padding: 0; list-style: none; font-size: 13.5px; }
+  .plan ul li { padding: 5px 0; color: var(--muted-2); }
+  .plan ul li::before { content: "✓ "; color: var(--success); margin-right: 4px; }
+  .plan .btn { margin-top: 22px; width: 100%; justify-content: center; padding: 10px 16px; font-size: 14px; }
+
+  /* Footer */
+  footer { padding: 36px 0; color: var(--muted); font-size: 13px; }
+  footer .row { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 22px; }
+  footer h5 {
+    color: var(--fg); font-size: 12px; text-transform: uppercase;
+    letter-spacing: 0.6px; margin: 0 0 12px;
+  }
+  footer ul { list-style: none; padding: 0; margin: 0; }
+  footer ul li { padding: 3px 0; }
+  footer .copy { color: var(--muted); font-size: 12px; margin-top: 24px; max-width: 760px; line-height: 1.6; }
+
+  @media (max-width: 720px) {
+    .hero h1 { font-size: 40px; }
+    footer .row { grid-template-columns: 1fr; }
+    .audience .row { grid-template-columns: 1fr; }
+    .verified-grid { grid-template-columns: 1fr 1fr; font-size: 13px; }
+    .verified-grid .head:nth-child(n+3) { display: none; }
+    .verified-grid > div:nth-child(5n+3),
+    .verified-grid > div:nth-child(5n+4),
+    .verified-grid > div:nth-child(5n+5) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="container">
+    <span class="brand"><span class="dot"></span>Darml</span>
+    <nav>
+      <a href="#hardware">Hardware</a>
+      <a href="#workflow">How it works</a>
+      <a href="#verified">Verified builds</a>
+      <a href="#pricing">Pricing</a>
+      <a href="https://pypi.org/project/darml/">PyPI</a>
+    </nav>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="container">
+    <h1>Model in. Firmware out.</h1>
+    <p class="tagline">
+      The model-to-firmware compiler for edge AI. Upload TFLite, ONNX, or
+      scikit-learn — get a flashable binary for AVR, STM32, ESP32,
+      Raspberry Pi, or Jetson. Single CLI. No vendor lock-in.
+    </p>
+    <div class="cmd">
+      <div><span class="prompt">$</span>pip install darml</div>
+      <div><span class="prompt">$</span>darml build model.tflite --target esp32-s3</div>
+      <div><span class="prompt">$</span>darml flash darml-build.zip --port /dev/ttyUSB0</div>
+      <div><span class="prompt">$</span>screen /dev/ttyUSB0 115200</div>
+      <div class="out">[Darml] Ready.</div>
+      <div class="out">[Darml] pred=2 conf=0.94 latency=12&micro;s</div>
+      <div class="out">[Darml] pred=2 conf=0.93 latency=11&micro;s</div>
+      <div class="comment"># Model running on hardware. Total wall time: ~6 minutes (first build).</div>
+    </div>
+    <div class="cta">
+      <a class="btn btn-primary" href="https://pypi.org/project/darml/">Install from PyPI →</a>
+      <a class="btn btn-ghost" href="#verified">See real builds</a>
+    </div>
+  </div>
+</section>
+
+<!-- Audience filter ─────────────────────────────────────────────────── -->
+<div class="audience">
+  <div class="container">
+    <div class="row">
+      <div>
+        <h4>For</h4>
+        <p>
+          Embedded engineers who already have a trained model and need it
+          running on a real device. ML researchers shipping a demo to a
+          chip. Teams replacing custom toolchain glue with one binary.
+        </p>
+      </div>
+      <div>
+        <h4>Not for</h4>
+        <p>
+          Training new models — bring your own. Cloud-only inference —
+          we ship to silicon. AutoML — we don't pick architectures, we
+          deploy yours.
+        </p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Workflow from the user's perspective ────────────────────────────── -->
+<section id="workflow">
+  <div class="container">
+    <h2>From your model to your device, in five steps.</h2>
+    <p class="lead">
+      No notebooks. No configuration files. No vendor SDKs. The CLI takes
+      your model file and your target board, tells you whether it'll fit,
+      and hands you something flashable.
+    </p>
+    <div class="workflow">
+      <div class="step">
+        <span class="num">01 / UPLOAD</span>
+        <h3>Hand it your model</h3>
+        <p><code>.tflite</code>, <code>.onnx</code>, or <code>.pkl</code> — Darml auto-detects the format.</p>
+      </div>
+      <div class="step">
+        <span class="num">02 / PICK</span>
+        <h3>Pick your board</h3>
+        <p>11 supported targets across 5 hardware tiers. <code>darml targets</code> lists them all.</p>
+      </div>
+      <div class="step">
+        <span class="num">03 / CHECK</span>
+        <h3>Get warned before you wait</h3>
+        <p>Will it fit in flash? Will it fit in RAM? You find out before the toolchain spins up.</p>
+      </div>
+      <div class="step">
+        <span class="num">04 / BUILD</span>
+        <h3>Get a binary</h3>
+        <p><code>firmware.bin</code> for MCUs, <code>.tar.gz</code> for Linux boards. Plus a manifest with target-specific flash instructions.</p>
+      </div>
+      <div class="step">
+        <span class="num">05 / FLASH</span>
+        <h3>Run it</h3>
+        <p><code>darml flash &lt;artifact.zip&gt; --port …</code> — auto-detects the right tool: esptool, STM32_Programmer_CLI, avrdude, ssh+docker.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Verified builds ─────────────────────────────────────────────────── -->
+<section id="verified">
+  <div class="container">
+    <h2>Real models, real targets, real numbers.</h2>
+    <p class="lead">
+      Every release runs through a 5-model × 11-target acceptance matrix
+      (55 parse + size-check combinations) plus end-to-end firmware
+      builds. These are the actual outputs from the latest passing run.
+    </p>
+    <div class="verified-grid">
+      <div class="head">Model</div>
+      <div class="head">Target</div>
+      <div class="head">Format → output</div>
+      <div class="head">Output size</div>
+      <div class="head">Build time</div>
+
+      <div>micro_speech (1D-Conv kw spotter)</div>
+      <div class="mono">esp32-s3</div>
+      <div class="mono">tflite → firmware.bin</div>
+      <div class="ok">566 KB</div>
+      <div class="mono">273 s</div>
+
+      <div>MNIST CNN (Conv2D + Dense)</div>
+      <div class="mono">stm32f4</div>
+      <div class="mono">tflite → firmware.bin</div>
+      <div class="ok">345 KB</div>
+      <div class="mono">176 s</div>
+
+      <div>MLP (multi-layer perceptron)</div>
+      <div class="mono">esp32-s3</div>
+      <div class="mono">onnx → tflite → firmware.bin</div>
+      <div class="ok">522 KB</div>
+      <div class="mono">270 s</div>
+
+      <div>Random forest (iris)</div>
+      <div class="mono">avr-mega328</div>
+      <div class="mono">sklearn → C library</div>
+      <div class="ok">1.5 KB</div>
+      <div class="mono">~1 s</div>
+
+      <div>MobileNetV2 INT8</div>
+      <div class="mono">rpi5</div>
+      <div class="mono">tflite → tarball + Dockerfile</div>
+      <div class="ok">597 KB</div>
+      <div class="mono">~2 s</div>
+    </div>
+    <p class="footnote">
+      Plus 73 passing unit tests covering parser, size estimator,
+      pipeline, build cache, license validation, and inference roundtrip
+      (FP32 ONNX vs INT8 TFLite, argmax-stable on ≥ 80% of samples).
+      Run the same matrix yourself: <code>./scripts/pre_publish.sh</code>.
+    </p>
+  </div>
+</section>
+
+<!-- Hardware tiers ──────────────────────────────────────────────────── -->
+<section id="hardware">
+  <div class="container">
+    <h2>11 targets. 5 hardware tiers.</h2>
+    <p class="lead">
+      AVR for the smallest sensors, Cortex-M for industrial control,
+      Xtensa for connected devices, Linux-class for vision and audio.
+      One CLI across all of them — no vendor SDK switching.
+    </p>
+    <div class="tiers">
+      <div class="tier">
+        <span class="badge">2–8 KB RAM</span>
+        <h3>AVR (Arduino-class)</h3>
+        <div class="tier-spec">emlearn · pure C · &lt;2 KB at runtime</div>
+        <div class="tier-targets">avr-mega328<br />avr-mega2560</div>
+      </div>
+      <div class="tier">
+        <span class="badge">320 KB – 1.5 MB RAM</span>
+        <h3>STM32 (Cortex-M)</h3>
+        <div class="tier-spec">TFLite Micro · ARM GCC</div>
+        <div class="tier-targets">stm32f4 · stm32h7 · stm32n6</div>
+      </div>
+      <div class="tier">
+        <span class="badge">520 KB – 8.5 MB RAM</span>
+        <h3>ESP32 (Xtensa)</h3>
+        <div class="tier-spec">TFLite Micro · WiFi/BT</div>
+        <div class="tier-targets">esp32 · esp32-s3 (PSRAM)</div>
+      </div>
+      <div class="tier">
+        <span class="badge">4–8 GB RAM</span>
+        <h3>Raspberry Pi</h3>
+        <div class="tier-spec">TFLite · Python + Docker</div>
+        <div class="tier-targets">rpi4 · rpi5</div>
+      </div>
+      <div class="tier">
+        <span class="badge">4–8 GB RAM</span>
+        <h3>NVIDIA Jetson</h3>
+        <div class="tier-spec">TensorRT / TFLite · Docker</div>
+        <div class="tier-targets">jetson-nano · jetson-orin</div>
+      </div>
+    </div>
+    <div class="hardware-cta">
+      Don't see your board? If it runs PlatformIO, we can probably add
+      it. <a href="https://github.com/ElMahdiElAnnabi/darml-core/issues/new">Open an issue</a>
+      with the chip + dev-board name and we'll prioritize.
+    </div>
+  </div>
+</section>
+
+<!-- Pricing — 4 tiers ───────────────────────────────────────────────── -->
+<section id="pricing">
+  <div class="container">
+    <h2>Pricing</h2>
+    <p class="lead">
+      Free to start. Self-host the same code your customers are running.
+      Industrial buyers prefer self-hosted annual licenses; we honor that.
+    </p>
+    <div class="plans">
+
+      <div class="plan">
+        <h3>Core</h3>
+        <div class="price">€0<small> / forever</small></div>
+        <p class="blurb">MIT — fully open source. Use it for anything, commercial or not.</p>
+        <ul>
+          <li>All 11 hardware targets</li>
+          <li>CLI with serial output</li>
+          <li>5 builds/day (per-machine)</li>
+          <li>Community support</li>
+        </ul>
+        <a class="btn btn-ghost" href="https://pypi.org/project/darml/">pip install darml</a>
+      </div>
+
+      <div class="plan">
+        <h3>Pro Cloud</h3>
+        <div class="price">€49<small> / month</small></div>
+        <p class="blurb">We host the build farm. No PlatformIO, no toolchain setup, no maintenance.</p>
+        <ul>
+          <li>Unlimited builds</li>
+          <li>INT8 auto-quantization</li>
+          <li>ONNX → TFLite auto-convert</li>
+          <li>Web dashboard + shared cache</li>
+          <li>HTTP / MQTT result output</li>
+          <li>Email support</li>
+        </ul>
+        <a class="btn btn-primary" href="https://api.darml.dev/v1/billing/checkout/pro-cloud">Start free trial</a>
+      </div>
+
+      <div class="plan feature">
+        <h3>Pro Self-Hosted</h3>
+        <div class="price">€499<small> / year / seat</small></div>
+        <p class="blurb">Run it inside your network. Air-gapped factories, secure dev environments, on-prem CI.</p>
+        <ul>
+          <li>Everything in Pro Cloud</li>
+          <li>Runs offline / air-gapped</li>
+          <li>Offline license key (HMAC)</li>
+          <li>14-day free trial built in</li>
+          <li>Commercial license</li>
+          <li>Email support, 1-day SLA</li>
+        </ul>
+        <a class="btn btn-primary" href="https://api.darml.dev/v1/billing/checkout/pro-selfhost">Start free trial</a>
+      </div>
+
+      <div class="plan">
+        <h3>Enterprise</h3>
+        <div class="price">Custom</div>
+        <p class="blurb">Dedicated build farm, signed firmware, SOC 2, fleet-management add-ons.</p>
+        <ul>
+          <li>Everything in Pro Self-Hosted</li>
+          <li>Signed firmware artifacts</li>
+          <li>Dedicated build runners</li>
+          <li>SSO / SAML</li>
+          <li>Volume seat pricing</li>
+          <li>Phone + email SLA</li>
+        </ul>
+        <a class="btn btn-ghost" href="mailto:hello@darml.dev?subject=Darml%20Enterprise">Talk to us</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer ──────────────────────────────────────────────────────────── -->
+<footer>
+  <div class="container">
+    <div class="row">
+      <div>
+        <span class="brand" style="display:flex;align-items:center;gap:8px;font-weight:600;color:var(--fg);">
+          <span style="display:inline-block;width:7px;height:7px;background:var(--accent);border-radius:50%;"></span>
+          Darml
+        </span>
+        <p class="copy">
+          Darml is an open-source model-to-firmware compiler for edge AI
+          devices. Compile TFLite, ONNX, or scikit-learn models to
+          flashable firmware for AVR, STM32, ESP32, Raspberry Pi, and
+          Jetson — from one CLI.
+        </p>
+      </div>
+      <div>
+        <h5>Product</h5>
+        <ul>
+          <li><a href="#workflow">How it works</a></li>
+          <li><a href="#hardware">Hardware</a></li>
+          <li><a href="#verified">Verified builds</a></li>
+          <li><a href="#pricing">Pricing</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Resources</h5>
+        <ul>
+          <li><a href="https://pypi.org/project/darml/">PyPI</a></li>
+          <li><a href="https://github.com/ElMahdiElAnnabi/darml-core">GitHub</a></li>
+          <li><a href="/blog/">Blog</a></li>
+          <li><a href="https://github.com/ElMahdiElAnnabi/darml-core/issues">Issues</a></li>
+        </ul>
+      </div>
+      <div>
+        <h5>Contact</h5>
+        <ul>
+          <li><a href="mailto:hello@darml.dev">hello@darml.dev</a></li>
+          <li><a href="mailto:security@darml.dev">security@darml.dev</a></li>
+          <li><a href="mailto:hello@darml.dev?subject=Darml%20Enterprise">Enterprise sales</a></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

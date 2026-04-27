@@ -1,0 +1,67 @@
+# --- Python -------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+.tox/
+
+# Packaging / build
+dist/
+build/
+sdist/
+wheels/
+*.whl
+
+# Test / coverage / type-check caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.hypothesis/
+
+# --- Project ------------------------------------------------------------
+# Persisted build artifacts and build cache
+data/
+demo_workspace/
+
+# Local dotenv
+.env
+.env.*
+!.env.example
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# --- Embedded / firmware artifacts -------------------------------------
+.pio/
+*.bin
+*.elf
+*.hex
+*.img
+*.uf2
+
+# --- Generated test fixtures (regenerable from make_real_models.py) ----
+tests/fixtures/*.tflite
+tests/fixtures/*.onnx
+tests/fixtures/*.pkl
+tests/fixtures/*.joblib
+CLAUDE*.md
