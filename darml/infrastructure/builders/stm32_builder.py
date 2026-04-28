@@ -53,3 +53,21 @@ class STM32N6Builder(PlatformIOBuilder):
             templates_root=templates_root,
             pio=pio,
         )
+
+
+class STM32U5Builder(PlatformIOBuilder):
+    def __init__(self, templates_root: Path, pio: PlatformIORunner):
+        super().__init__(
+            config=PlatformIOBuilderConfig(
+                target_id="stm32u5",
+                template_subdir="stm32",
+                pio_environment="stm32u5",
+                tensor_arena_min_bytes=131072,
+                # STM32U585 (Nucleo-U575ZI-Q) has 786 KB SRAM. Reserve
+                # ~256 KB for framework + interpreter + secure-element
+                # (TrustZone) carveout; rest available for the arena.
+                tensor_arena_max_bytes=512 * 1024,
+            ),
+            templates_root=templates_root,
+            pio=pio,
+        )

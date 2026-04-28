@@ -63,6 +63,12 @@ class Target:
     psram_kb: int = 0
     platformio_board: str | None = None
     platformio_platform: str | None = None
+    # Required tier to build for this target. "free" targets are buildable
+    # by every authenticated user (including free_signup). "pro" requires
+    # an active Pro Cloud / Pro Team / Pro Self-Hosted subscription.
+    # "pro_team" gates accelerator targets that need extra build-farm
+    # capacity (Ethos-U toolchain etc) — only Pro Team + Self-Hosted.
+    tier: str = "free"
 
     @property
     def is_microcontroller(self) -> bool:

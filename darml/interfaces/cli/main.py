@@ -112,8 +112,10 @@ def targets() -> None:
     c = get_container()
     for t in c.list_targets.execute():
         ram = t.ram_kb + t.psram_kb
+        tier_tag = "" if t.tier == "free" else f"  [{t.tier.upper()}]"
         click.echo(
-            f"  {t.id:14s}  {ram:>9,} KB RAM  {t.flash_kb:>9,} KB flash  {t.runtime.value}"
+            f"  {t.id:18s}  {ram:>9,} KB RAM  {t.flash_kb:>9,} KB flash  "
+            f"{t.runtime.value}{tier_tag}"
         )
 
 

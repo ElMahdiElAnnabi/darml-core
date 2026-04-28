@@ -38,11 +38,14 @@ from darml.infrastructure.builders.jetson_builder import (
     JetsonNanoBuilder,
     JetsonOrinBuilder,
 )
+from darml.infrastructure.builders.nrf52840_builder import NRF52840Builder
+from darml.infrastructure.builders.rp2040_builder import RP2040Builder
 from darml.infrastructure.builders.rpi_builder import RPi4Builder, RPi5Builder
 from darml.infrastructure.builders.stm32_builder import (
     STM32F4Builder,
     STM32H7Builder,
     STM32N6Builder,
+    STM32U5Builder,
 )
 from darml.infrastructure.flashers.esptool_flasher import (
     AvrdudeFlasher,
@@ -85,6 +88,9 @@ class Container:
             STM32F4Builder(templates_root, self.pio),
             STM32H7Builder(templates_root, self.pio),
             STM32N6Builder(templates_root, self.pio),
+            STM32U5Builder(templates_root, self.pio),
+            NRF52840Builder(templates_root, self.pio),
+            RP2040Builder(templates_root, self.pio),
             AVRMega328Builder(templates_root, self.pio),
             AVRMega2560Builder(templates_root, self.pio),
             RPi4Builder(templates_root),

@@ -42,6 +42,57 @@ TARGETS: dict[str, Target] = {
         platformio_board="nucleo_n657x0",
         platformio_platform="ststm32",
     ),
+    "stm32u5": Target(
+        id="stm32u5",
+        # STM32U585 — Cortex-M33 with TrustZone, 786 KB SRAM, 2 MB flash.
+        # Pro tier because it overlaps STM32H7's audience but adds secure-
+        # element / TrustZone wiring we maintain ourselves.
+        ram_kb=768,
+        flash_kb=2048,
+        runtime=Runtime.TFLITE_MICRO,
+        platformio_board="nucleo_u575zi_q",
+        platformio_platform="ststm32",
+        tier="pro",
+    ),
+    "nrf52840": Target(
+        id="nrf52840",
+        # Nordic nRF52840 — Cortex-M4F with BLE 5 + Thread/Zigbee. The
+        # tinyML-on-BLE niche is large enough to justify Pro: shipping a
+        # working Bluetooth-aware firmware template needs nontrivial
+        # softdevice glue we maintain.
+        ram_kb=256,
+        flash_kb=1024,
+        runtime=Runtime.TFLITE_MICRO,
+        platformio_board="nrf52840_dk",
+        platformio_platform="nordicnrf52",
+        tier="pro",
+    ),
+    "rp2040": Target(
+        id="rp2040",
+        # Raspberry Pi RP2040 (Pico) — dual Cortex-M0+, no FPU. Pro because
+        # we ship a tflm + cmsis-nn build with hand-tuned int8 kernels;
+        # the stock Arduino flow runs about 4× slower.
+        ram_kb=264,
+        flash_kb=2048,
+        runtime=Runtime.TFLITE_MICRO,
+        platformio_board="pico",
+        platformio_platform="raspberrypi",
+        tier="pro",
+    ),
+    "alif-ensemble-e7": Target(
+        id="alif-ensemble-e7",
+        # Alif Ensemble E7 — Cortex-M55 + Helium (MVE) + Ethos-U55 NPU.
+        # Pro Team only: building for this needs the Vela compiler in the
+        # build farm and a non-trivial NPU memory plan. Registered as
+        # early-access; the build endpoint will return 503 + a friendly
+        # "request access" message until the toolchain ships.
+        ram_kb=13_500,
+        flash_kb=5_376,
+        runtime=Runtime.TFLITE_MICRO,
+        platformio_board=None,
+        platformio_platform=None,
+        tier="pro_team",
+    ),
     "esp32": Target(
         id="esp32",
         # Original ESP32 (Xtensa LX6, e.g. ESP-WROOM-32). 520 KB internal SRAM

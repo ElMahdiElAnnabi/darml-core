@@ -1,0 +1,67 @@
+# EXAMPLE WORKFLOW for Pro targets — copy this into YOUR repo, not run from here.
+#
+# Pro targets (nrf52840, rp2040, stm32u5, alif-ensemble-e7) require a
+# Pro Cloud or Pro Team API key. The hosted farm enforces tier gating
+# and returns HTTP 402 if your key doesn't cover the target — the
+# action will fail with a clear "Upgrade at https://darml.dev/#pricing"
+# message in the step log, no retry needed.
+#
+# To use this in your own repo:
+#   1. Copy to .github/workflows/build-pro.yml in YOUR repo.
+#   2. Replace `workflow_dispatch:` with your real trigger (typical:
+#        on:
+#          push:
+#            branches: [main]
+#   3. Add your model to the repo.
+#   4. Set the DARML_API_KEY secret to a Pro Cloud or Pro Team key.
+#   5. Trim the matrix to the boards you actually ship.
+#
+# alif-ensemble-e7 is OMITTED from the matrix because it's currently
+# early-access and the build farm returns 503 for it. Add it to the
+# matrix once the Vela toolchain ships (we'll announce it in the repo
+# release notes; subscribe via Watch → Custom → Releases).
+
+name: Build firmware — Pro targets (example — manual only)
+
+on:
+  # Manual-only in darml-core. Replace with `push:` when you copy.
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          # MCU breadth — Pro Cloud unlocks all three.
+          - nrf52840    # Cortex-M4F + BLE 5
+          - rp2040      # Dual Cortex-M0+ (Pico)
+          - stm32u5     # Cortex-M33 + TrustZone
+          # alif-ensemble-e7 — Pro Team, early access. Uncomment once
+          # the Vela toolchain is live in the hosted farm.
+          # - alif-ensemble-e7
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build for ${{ matrix.target }}
+        id: darml
+        uses: ElMahdiElAnnabi/darml-core/.github/actions/build@main
+        with:
+          model: model.onnx
+          target: ${{ matrix.target }}
+          api-key: ${{ secrets.DARML_API_KEY }}
+          # INT8 PTQ — works on every Pro MCU target. For Alif, mixed
+          # precision will be more interesting once Vela ships.
+          quantize: 'true'
+          output-path: 'firmware-${{ matrix.target }}.zip'
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-${{ matrix.target }}
+          path: ${{ steps.darml.outputs.artifact-path }}
+          retention-days: 7
