@@ -70,3 +70,33 @@ uses [Semantic Versioning](https://semver.org/).
   Calling `.quantize()` raises `NotImplementedError` unless the
   caller passes `_allow_scaffold=True` (acknowledges the kill-criterion
   benchmark hasn't been run).
+
+## [Unreleased] — P1.3 Team workspace
+
+### Added
+- `Workspace` + `WorkspaceMember` domain types; `Role` enum
+  (owner / admin / member).
+- `WorkspaceStorePort` + `SqliteWorkspaceStore` Pro adapter.
+- New SQLite tables: `workspaces`, `workspace_members`, `audit_log`.
+  Existing DBs migrate automatically (additive ALTER TABLE for the
+  new `api_keys.workspace_id` column).
+- New endpoints (Pro):
+  - `POST /v1/workspaces` — create
+  - `GET  /v1/workspaces` — list mine
+  - `GET  /v1/workspaces/{slug}` — details
+  - `GET  /v1/workspaces/{slug}/members` — list
+  - `POST /v1/workspaces/{slug}/members` — invite (admin/owner only)
+  - `POST /v1/workspaces/{slug}/members/{email}/accept` — accept invite
+  - `DELETE /v1/workspaces/{slug}/members/{email}` — remove (admin/owner only)
+  - `GET  /v1/workspaces/{slug}/audit` — audit log
+- 15 new test cases covering store + endpoints + role checks +
+  duplicate detection + invite flow.
+
+### Scaffolded (still pending — see docs)
+- **P1.2 Premium targets** — needs Alif Ensemble / STM32N6 / Renesas RA8
+  eval boards. Roadmap at `docs/PREMIUM_TARGETS_ROADMAP.md`. Order one
+  Alif kit (~$199) to unblock.
+- **P1.4 Hyperparam sweeps** — sequential path is scaffolded; parallel
+  needs Celery + Redis (Upstash recommended). Roadmap at
+  `docs/SWEEPS_ROADMAP.md`. The Pareto-frontier helper is shippable
+  today (6 tests passing).
